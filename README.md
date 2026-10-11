@@ -16,7 +16,7 @@ Transfers = 16 (mode/corner sweep) + 80 (fast clock) + 500 (random).
 Log screenshots are in `docs/`.
 
 ### Bug-injection check
-TODO: change `is_sample = (edge_cnt[0] == cpha)` to `!=` in `rtl/spi_master.sv`, run again and note the mismatches reported by the scoreboard.
+The sampling-edge condition in the master was changed on purpose (== to !=). The scoreboard reported 566 mismatches, so the testbench catches the bug. The change was reverted afterwards.
 
 RTL alone (`sim/quick_tb.sv`, Icarus Verilog): 92 transfers over all 4 modes, 0 errors.
 
