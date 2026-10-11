@@ -41,7 +41,7 @@ The 596 transfers are 16 (mode and corner-data sweep), 80 (fastest clock) and 50
 
 ### Bug injection
 
-To check that the testbench actually catches bugs, the sampling-edge condition in the master was changed (`==` to `!=`). The scoreboard reported 596 mismatches. The change was reverted afterwards.
+To check that the testbench actually catches bugs, the sampling-edge condition in the master was changed (`==` to `!=`). The scoreboard reported 566 mismatches out of 596 transfers. The change was reverted afterwards.
 
 ![Bug detected](docs/WhatsApp%20Image%202026-10-10%20at%205.24.44%20PM.jpeg)
 
