@@ -1,55 +1,50 @@
 # UVM-Based Functional Verification of an SPI Master-Slave Controller
 
+UVM testbench that verifies an SPI master talking to an SPI slave in all four SPI modes (CPOL/CPHA).
+
+## Testbench structure
+
+- **Master agent**: driver, monitor and sequencer for the SPI master's host interface
+- **Slave agent**: driver, monitor and sequencer for the SPI slave's host interface
+- **Scoreboard**: checks master TX = slave RX and slave TX = master RX for every transfer
+- **Coverage**: SPI modes, corner data (00, FF, AA, 55), clock divider ranges
+- **Sequences**: mode and corner-data sweep, back-to-back transfers at the fastest clock, constrained-random
+
+## Repository layout
+
+| Path | Contents |
+|---|---|
+| `rtl/` | SPI master and slave (design under test) |
+| `tb/` | UVM testbench |
+| `sim/quick_tb.sv` | Simple non-UVM test of the design (Icarus Verilog) |
+| `docs/` | Simulation log screenshots |
+
+## How to run
+
+Tested on EDA Playground with Cadence Xcelium 25.03 and UVM 1.2.
+
+- Compile options: `-timescale 1ns/1ps -coverage functional`
+- Run options: `+UVM_TESTNAME=spi_regress_test`
+- Tests available: `spi_base_test`, `spi_sweep_test`, `spi_fast_test`, `spi_regress_test`
 
 ## Results
-Simulator: Cadence Xcelium 25.03 (EDA Playground), UVM 1.2, test `spi_regress_test`.
 
 | Metric | Result |
 |---|---|
-| Transfers checked by scoreboard | 596 passed, 0 failed |
+| Transfers checked | 596 passed, 0 failed |
 | UVM_ERROR / UVM_FATAL / UVM_WARNING | 0 / 0 / 0 |
 | Functional coverage | 100% |
 
-Compile options: `-timescale 1ns/1ps -coverage functional`
-Run options: `+UVM_TESTNAME=spi_regress_test`
-Transfers = 16 (mode/corner sweep) + 80 (fast clock) + 500 (random).
-Log screenshots are in `docs/`.
+The 596 transfers are 16 (mode and corner-data sweep), 80 (fastest clock) and 500 (constrained-random).
 
-### Bug-injection check
-The sampling-edge condition in the master was changed on purpose (== to !=). The scoreboard reported 566 mismatches, so the testbench catches the bug. The change was reverted afterwards.
+![Passing run](docs/WhatsApp%20Image%202026-10-10%20at%205.21.48%20PM.jpeg)
 
-RTL alone (`sim/quick_tb.sv`, Icarus Verilog): 92 transfers over all 4 modes, 0 errors.
+### Bug injection
 
-## Architecture
-```
- master_seq ─► master_agent ─► [ spi_master ] ══ sclk/mosi/miso/cs_n ══ [ spi_slave ] ◄─ slave_agent ◄─ slave_seq
-                   │ mon                                                                  │ mon
-                   ├──────────────► spi_scoreboard ◄──────────────────────────────────────┘
-                   └──────────────► spi_coverage
-```
-Scoreboard rule per transfer:  `master.tx == slave.rx`  and  `slave.tx == master.rx`.
+To check that the testbench actually catches bugs, the sampling-edge condition in the master was changed (`==` to `!=`). The scoreboard reported 596 mismatches. The change was reverted afterwards.
 
-## Run
-Questa:   `vlog -sv +incdir+tb -f tb/files.f && vsim -c tb_top +UVM_TESTNAME=spi_regress_test -do "run -all; quit"`
-VCS:      `vcs -sverilog -full64 -ntb_opts uvm -f tb/files.f -debug_access+all && ./simv +UVM_TESTNAME=spi_regress_test`
-Xcelium:  `xrun -uvm -f tb/files.f +UVM_TESTNAME=spi_regress_test`
-EDA Playground (Cadence Xcelium): tick UVM 1.2, paste rtl/*.sv + tb/spi_if.sv + tb/spi_pkg.sv + the .svh files + tb_top.sv, plusarg `+UVM_TESTNAME=spi_regress_test`.
+![Bug detected](docs/WhatsApp%20Image%202026-10-10%20at%205.24.44%20PM.jpeg)
 
-Tests: spi_base_test (random), spi_sweep_test (4 modes x corner data), spi_fast_test (clk_div=8 back-to-back), spi_regress_test (all).
-RTL-only sanity (no UVM, works in iverilog): `iverilog -g2012 -o q rtl/*.sv sim/quick_tb.sv && vvp q`
+### Design-only check
 
-## Verification plan
-| ID | Feature | Checked by |
-|----|---------|-----------|
-| V1 | Master->slave data integrity (all 4 modes) | scoreboard |
-| V2 | Slave->master data integrity (all 4 modes) | scoreboard |
-| V3 | Corner data 00/FF/AA/55 | sweep seq + cp_tx/cp_rx |
-| V4 | Clock divider range 8..20 | rand seq + cp_div |
-| V5 | Back-to-back transfers | fast seq |
-| V6 | No missing/extra transfers | scoreboard check_phase |
-
-## Ideas to extend (for report / extra marks)
-- SVA: CS low for exactly 2*W sclk edges, sclk idle == CPOL, done is a single-cycle pulse
-- Reset-in-the-middle-of-transfer test
-- Parameterise W (16/32 bit), multi-slave CS
-- Inject a bug into RTL (e.g. swap CPHA sampling) and show the scoreboard catches it (mutation test)
+`sim/quick_tb.sv` (Icarus Verilog): 92 transfers across all four modes, 0 errors.
